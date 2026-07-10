@@ -19,7 +19,6 @@ class ActiveMissionScreen extends StatefulWidget {
 class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   bool isMissionActive = false;
   bool isPenaltyRinging = false;
-  bool isSuccessScreen = false; // Added for the "Yay!" animation
 
   Timer? _systemTimer;
   DateTime? _targetEndTime;
@@ -66,7 +65,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
       isPenaltyRinging = false;
     });
 
-    // Enforce strict silence during the mission
     await Alarm.stop(widget.alarmSettings.id);
 
     _targetEndTime = DateTime.now().add(const Duration(minutes: 5));
@@ -136,17 +134,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
     _systemTimer?.cancel();
     await Alarm.stop(widget.alarmSettings.id);
-
-    // Trigger Success Screen
-    setState(() {
-      isMissionActive = false;
-      isSuccessScreen = true;
-    });
-
-    // Delay to show the Yay! screen before closing
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) Navigator.pop(context);
-    });
+    if (mounted) Navigator.pop(context);
   }
 
   String get formattedTime {
@@ -168,28 +156,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Success Screen Overlay
-    if (isSuccessScreen) {
-      return Scaffold(
-        backgroundColor: AppColors.neumorphicBackground,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text("🎉", style: TextStyle(fontSize: 80)),
-              const SizedBox(height: 20),
-              Text(
-                "Yay! Mission Completed!",
-                style: AppTypography.alarmHeader.copyWith(fontSize: 28),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // 2. Standard Restored UI
     String headerText = 'WAKE UP';
     if (isMissionActive) headerText = 'MISSION ACTIVE';
     if (isPenaltyRinging) headerText = 'PENALTY RINGING';
@@ -302,7 +268,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                     ),
                   ),
                 ] else ...[
-                  // RESTORED STEP WIDGET WITH TICKMARK
+                  // DEVELOPER TAP TO CHEAT WIDGET
                   GestureDetector(
                     onTap: () {
                       setState(() {
@@ -317,16 +283,13 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(
-                                  currentSteps >= targetSteps
-                                      ? Icons.check_circle
-                                      : Icons.directions_walk,
+                              Icon(Icons.directions_walk,
                                   color: currentSteps >= targetSteps
                                       ? Colors.green
                                       : AppColors.accentOrange,
                                   size: 28),
                               const SizedBox(width: 12),
-                              Text('MANDATORY STEPS',
+                              Text('STEPS (TAP HERE)',
                                   style: AppTypography.interfaceLabel
                                       .copyWith(fontWeight: FontWeight.bold)),
                             ],
@@ -345,27 +308,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                       ),
                     ),
                   ),
-
-                  // OPTIONAL SKIP BUTTON FOR THOSE WHO CANNOT WALK
-                  if (currentSteps < targetSteps) ...[
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          currentSteps = targetSteps;
-                        });
-                      },
-                      child: const Text(
-                        "I can't walk right now (Skip)",
-                        style: TextStyle(
-                          fontFamily: 'Satoshi',
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 32),
 
                   Container(
@@ -420,15 +362,20 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  isTypingMode
-                      ? TypingMissionWidget(
-                          targetAffirmation: targetAffirmation,
-                          onMissionComplete: _completeMission,
-                        )
-                      : VoiceMissionWidget(
-                          targetAffirmation: targetAffirmation,
-                          onMissionComplete: _completeMission,
-                        ),
+                  // IndexedStack prevents the text field from losing memory
+                  IndexedStack(
+                    index: isTypingMode ? 0 : 1,
+                    children: [
+                      TypingMissionWidget(
+                        targetAffirmation: targetAffirmation,
+                        onMissionComplete: _completeMission,
+                      ),
+                      VoiceMissionWidget(
+                        targetAffirmation: targetAffirmation,
+                        onMissionComplete: _completeMission,
+                      ),
+                    ],
+                  ),
                 ],
               ],
             ),
