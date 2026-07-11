@@ -43,7 +43,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   }
 
   void _startInitialRingingTimeout() {
-    _targetEndTime = DateTime.now().add(const Duration(minutes: 4));
+    _targetEndTime = DateTime.now().add(const Duration(minutes: 1));
     _systemTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted || _targetEndTime == null) return;
       final remaining = _targetEndTime!.difference(DateTime.now()).inSeconds;
@@ -67,7 +67,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
     await Alarm.stop(widget.alarmSettings.id);
 
-    _targetEndTime = DateTime.now().add(const Duration(minutes: 5));
+    _targetEndTime = DateTime.now().add(const Duration(minutes: 1));
     _systemTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted || _targetEndTime == null) return;
       final remaining = _targetEndTime!.difference(DateTime.now()).inSeconds;
@@ -101,7 +101,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     );
     await Alarm.set(alarmSettings: penaltySettings);
 
-    _targetEndTime = DateTime.now().add(const Duration(minutes: 4));
+    _targetEndTime = DateTime.now().add(const Duration(minutes: 1));
     _systemTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted || _targetEndTime == null) return;
       final remaining = _targetEndTime!.difference(DateTime.now()).inSeconds;
