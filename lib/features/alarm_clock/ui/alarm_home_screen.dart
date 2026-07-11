@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:alarm/alarm.dart';
+import 'package:permission_handler/permission_handler.dart'; // NEW IMPORT
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/neumorphic_styles.dart';
 import '../../../core/models/alarm_model.dart';
@@ -16,26 +17,65 @@ class _AlarmHomeScreenState extends State<AlarmHomeScreen> {
   List<AlarmModel> myAlarms = [];
   final List<String> dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-  // Calculates exact next ring time for scheduling AND priority sorting
+  @override
+  void initState() {
+    super.initState();
+    _requestSystemPermissions(); // NEW: Ask for permissions on boot
+    _loadSavedAlarms();
+  }
+
+  // NEW: Forces the OS to ask for required wake-lock permissions
+  Future<void> _requestSystemPermissions() async {
+    await Permission.systemAlertWindow
+        .request(); // "Appear on Top" (Crucial for Samsung)
+    await Permission.scheduleExactAlarm.request(); // Allow exact timing
+    await Permission.notification
+        .request(); // Allow full screen intent notification
+  }
+
+  Future<void> _loadSavedAlarms() async {
+    final savedSettings = await Alarm.getAlarms();
+    List<AlarmModel> restoredAlarms = [];
+
+    for (var setting in savedSettings) {
+      restoredAlarms.add(AlarmModel(
+        id: setting.id,
+        time: setting.dateTime,
+        activeDays: [false, false, false, false, false, false, false],
+        isActive: true,
+        isAsset: true,
+        songPath: setting.assetAudioPath?.split('/').last ?? 'clarity.mp3',
+        vibrate: setting.vibrate,
+        missionSteps: 30,
+        templateCategory: 'Default',
+      ));
+    }
+
+    if (mounted) {
+      setState(() {
+        myAlarms = restoredAlarms;
+        _sortAlarms();
+      });
+    }
+  }
+
   DateTime _calculateNextRingTime(
       DateTime selectedTime, List<bool> activeDays) {
     DateTime now = DateTime.now();
     DateTime candidate = DateTime(
         now.year, now.month, now.day, selectedTime.hour, selectedTime.minute);
 
-    // If it's a one-time alarm (no days selected)
     if (!activeDays.contains(true)) {
       return candidate.isBefore(now)
           ? candidate.add(const Duration(days: 1))
           : candidate;
     }
 
-    // Check if today is active and time hasn't passed
     int currentDayIndex = candidate.weekday - 1;
-    if (activeDays[currentDayIndex] == true && candidate.isAfter(now))
+    if (activeDays[currentDayIndex] == true && candidate.isAfter(now)) {
       return candidate;
+    }
 
-    // Search the next 7 days for the closest active day
     for (int i = 1; i <= 7; i++) {
       candidate = candidate.add(const Duration(days: 1));
       if (activeDays[candidate.weekday - 1] == true) return candidate;
@@ -43,7 +83,6 @@ class _AlarmHomeScreenState extends State<AlarmHomeScreen> {
     return candidate;
   }
 
-  // Sorts the list so the closest upcoming active alarm is first
   void _sortAlarms() {
     myAlarms.sort((a, b) {
       if (a.isActive && !b.isActive) return -1;
@@ -53,7 +92,6 @@ class _AlarmHomeScreenState extends State<AlarmHomeScreen> {
     });
   }
 
-  // Uses the NEW Package Syntax
   Future<void> _scheduleNativeAlarm(AlarmModel alarm) async {
     final ringTime = _calculateNextRingTime(alarm.time, alarm.activeDays);
     String audioPath =
@@ -67,9 +105,8 @@ class _AlarmHomeScreenState extends State<AlarmHomeScreen> {
       vibrate: alarm.vibrate,
       warningNotificationOnKill: true,
       androidFullScreenIntent: true,
-      volumeSettings: const VolumeSettings.fixed(volume: 0.8), // New Syntax
+      volumeSettings: const VolumeSettings.fixed(volume: 0.8),
       notificationSettings: NotificationSettings(
-        // New Syntax
         title: 'Alarmation',
         body: 'Wake up! Mission required: ${alarm.missionSteps} steps',
         stopButton: 'Start Mission',
@@ -107,51 +144,63 @@ class _AlarmHomeScreenState extends State<AlarmHomeScreen> {
                           color: Colors.white, size: 20)),
                 ],
               ),
-              const SizedBox(height: 40),
-              Center(
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: NeumorphicStyles.convexDecoration(radius: 150),
-                  child: Center(
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                          color: AppColors.pureBlack,
-                          borderRadius: BorderRadius.circular(40),
-                          boxShadow: const [
-                            BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 10,
-                                offset: Offset(0, 5))
-                          ]),
-                      child:
-                          const Icon(Icons.add, color: Colors.white, size: 32),
-                    ),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 40),
+                      Center(
+                        child: Container(
+                          width: 300,
+                          height: 300,
+                          decoration:
+                              NeumorphicStyles.convexDecoration(radius: 150),
+                          child: Center(
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                  color: AppColors.pureBlack,
+                                  borderRadius: BorderRadius.circular(40),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 10,
+                                        offset: Offset(0, 5))
+                                  ]),
+                              child: const Icon(Icons.add,
+                                  color: Colors.white, size: 32),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      SizedBox(
+                        height: 180,
+                        child: myAlarms.isEmpty
+                            ? const Center(
+                                child: Text("No Alarms Set",
+                                    style:
+                                        TextStyle(color: AppColors.textMuted)))
+                            : ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                clipBehavior: Clip.none,
+                                itemCount: myAlarms.length,
+                                itemBuilder: (context, index) => Padding(
+                                  padding: const EdgeInsets.only(right: 20.0),
+                                  child: _buildDynamicAlarmCard(
+                                      myAlarms[index], index),
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
-              SizedBox(
-                height: 180,
-                child: myAlarms.isEmpty
-                    ? const Center(
-                        child: Text("No Alarms Set",
-                            style: TextStyle(color: AppColors.textMuted)))
-                    : ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        clipBehavior: Clip.none,
-                        itemCount: myAlarms.length,
-                        itemBuilder: (context, index) => Padding(
-                          padding: const EdgeInsets.only(right: 20.0),
-                          child: _buildDynamicAlarmCard(myAlarms[index], index),
-                        ),
-                      ),
-              ),
-              const Spacer(),
               Container(
-                margin: const EdgeInsets.only(bottom: 16),
+                margin: const EdgeInsets.only(bottom: 16, top: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 decoration: NeumorphicStyles.convexDecoration(radius: 40),
                 child: Row(
@@ -175,7 +224,6 @@ class _AlarmHomeScreenState extends State<AlarmHomeScreen> {
                     IconButton(
                       icon: const Icon(Icons.add, color: AppColors.pureBlack),
                       onPressed: () async {
-                        // 15 ALARM LIMIT CHECK
                         if (myAlarms.length >= 15) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -217,7 +265,6 @@ class _AlarmHomeScreenState extends State<AlarmHomeScreen> {
     String minute = alarm.time.minute.toString().padLeft(2, '0');
 
     return GestureDetector(
-      // EDIT EXISTING ALARM
       onTap: () async {
         final updatedAlarm = await showModalBottomSheet(
           context: context,

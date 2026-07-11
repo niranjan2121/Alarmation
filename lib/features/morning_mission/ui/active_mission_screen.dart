@@ -19,6 +19,7 @@ class ActiveMissionScreen extends StatefulWidget {
 class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   bool isMissionActive = false;
   bool isPenaltyRinging = false;
+  bool isSuccessScreen = false;
 
   Timer? _systemTimer;
   DateTime? _targetEndTime;
@@ -43,7 +44,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
   }
 
   void _startInitialRingingTimeout() {
-    _targetEndTime = DateTime.now().add(const Duration(minutes: 1));
+    _targetEndTime = DateTime.now().add(const Duration(minutes: 4));
     _systemTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted || _targetEndTime == null) return;
       final remaining = _targetEndTime!.difference(DateTime.now()).inSeconds;
@@ -67,7 +68,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
     await Alarm.stop(widget.alarmSettings.id);
 
-    _targetEndTime = DateTime.now().add(const Duration(minutes: 1));
+    _targetEndTime = DateTime.now().add(const Duration(minutes: 5));
     _systemTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted || _targetEndTime == null) return;
       final remaining = _targetEndTime!.difference(DateTime.now()).inSeconds;
@@ -101,7 +102,7 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
     );
     await Alarm.set(alarmSettings: penaltySettings);
 
-    _targetEndTime = DateTime.now().add(const Duration(minutes: 1));
+    _targetEndTime = DateTime.now().add(const Duration(minutes: 4));
     _systemTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted || _targetEndTime == null) return;
       final remaining = _targetEndTime!.difference(DateTime.now()).inSeconds;
@@ -134,7 +135,15 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
     _systemTimer?.cancel();
     await Alarm.stop(widget.alarmSettings.id);
-    if (mounted) Navigator.pop(context);
+
+    setState(() {
+      isMissionActive = false;
+      isSuccessScreen = true;
+    });
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) Navigator.pop(context);
+    });
   }
 
   String get formattedTime {
@@ -156,6 +165,24 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (isSuccessScreen) {
+      return Scaffold(
+        backgroundColor: AppColors.neumorphicBackground,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text("🎉", style: TextStyle(fontSize: 80)),
+              const SizedBox(height: 20),
+              Text("Yay! Mission Completed!",
+                  style: AppTypography.alarmHeader.copyWith(fontSize: 28),
+                  textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      );
+    }
+
     String headerText = 'WAKE UP';
     if (isMissionActive) headerText = 'MISSION ACTIVE';
     if (isPenaltyRinging) headerText = 'PENALTY RINGING';
@@ -172,16 +199,13 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  headerText,
-                  style: AppTypography.interfaceLabel.copyWith(
-                    color: (isMissionActive || isPenaltyRinging)
-                        ? AppColors.accentOrange
-                        : AppColors.pureBlack,
-                    letterSpacing: 3.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text(headerText,
+                    style: AppTypography.interfaceLabel.copyWith(
+                        color: (isMissionActive || isPenaltyRinging)
+                            ? AppColors.accentOrange
+                            : AppColors.pureBlack,
+                        letterSpacing: 3.0,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 40),
                 Container(
                   width: double.infinity,
@@ -189,20 +213,18 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                   decoration: NeumorphicStyles.convexDecoration(radius: 32),
                   child: Column(
                     children: [
-                      Text(
-                        isMissionActive ? formattedTime : clockData['time']!,
-                        style: AppTypography.alarmHeader.copyWith(fontSize: 64),
-                      ),
+                      Text(isMissionActive ? formattedTime : clockData['time']!,
+                          style:
+                              AppTypography.alarmHeader.copyWith(fontSize: 64)),
                       const SizedBox(height: 4),
                       Text(
-                        isMissionActive
-                            ? 'REMAINING TO COMPLETE'
-                            : clockData['period']!,
-                        style: AppTypography.interfaceLabel.copyWith(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textDark),
-                      ),
+                          isMissionActive
+                              ? 'REMAINING TO COMPLETE'
+                              : clockData['period']!,
+                          style: AppTypography.interfaceLabel.copyWith(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textDark)),
                     ],
                   ),
                 ),
@@ -216,13 +238,10 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                       decoration:
                           NeumorphicStyles.concaveDecoration(radius: 20),
                       child: Center(
-                        child: Text(
-                          'START MISSION',
-                          style: AppTypography.interfaceLabel.copyWith(
-                              color: AppColors.accentOrange,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
+                          child: Text('START MISSION',
+                              style: AppTypography.interfaceLabel.copyWith(
+                                  color: AppColors.accentOrange,
+                                  fontWeight: FontWeight.bold))),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -236,78 +255,86 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                     child: Column(
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.info_outline,
-                                color: AppColors.accentOrange, size: 16),
-                            const SizedBox(width: 8),
-                            Text(
-                                isPenaltyRinging
-                                    ? 'FINAL WARNING'
-                                    : 'MISSION RULES',
-                                style: AppTypography.interfaceLabel.copyWith(
-                                    color: AppColors.accentOrange,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold)),
-                          ],
-                        ),
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.info_outline,
+                                  color: AppColors.accentOrange, size: 16),
+                              const SizedBox(width: 8),
+                              Text(
+                                  isPenaltyRinging
+                                      ? 'FINAL WARNING'
+                                      : 'MISSION RULES',
+                                  style: AppTypography.interfaceLabel.copyWith(
+                                      color: AppColors.accentOrange,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold))
+                            ]),
                         const SizedBox(height: 12),
                         Text(
-                          isPenaltyRinging
-                              ? 'Complete the mission now. Remaining silent past the countdown will turn the alarm off permanently to safeguard device hardware.'
-                              : 'Start and complete the mission (Affirmations & Steps) to stop the alarm.\n\nFailing to complete it within the 5-minute timer will trigger the alarm again.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontFamily: 'Satoshi',
-                              fontSize: 13,
-                              color: AppColors.textDark,
-                              height: 1.6,
-                              fontWeight: FontWeight.w500),
-                        ),
+                            isPenaltyRinging
+                                ? 'Complete the mission now. Remaining silent past the countdown will turn the alarm off permanently to safeguard device hardware.'
+                                : 'Start and complete the mission (Affirmations & Steps) to stop the alarm.\n\nFailing to complete it within the 5-minute timer will trigger the alarm again.',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontFamily: 'Satoshi',
+                                fontSize: 13,
+                                color: AppColors.textDark,
+                                height: 1.6,
+                                fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ),
                 ] else ...[
-                  // DEVELOPER TAP TO CHEAT WIDGET
                   GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        if (currentSteps < targetSteps) currentSteps += 5;
-                      });
-                    },
+                    onTap: () => setState(() {
+                      if (currentSteps < targetSteps) currentSteps += 5;
+                    }),
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: NeumorphicStyles.convexDecoration(radius: 20),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Icon(Icons.directions_walk,
-                                  color: currentSteps >= targetSteps
-                                      ? Colors.green
-                                      : AppColors.accentOrange,
-                                  size: 28),
-                              const SizedBox(width: 12),
-                              Text('STEPS (TAP HERE)',
-                                  style: AppTypography.interfaceLabel
-                                      .copyWith(fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                          Text(
-                            '$currentSteps / $targetSteps',
-                            style: TextStyle(
-                                fontFamily: 'Satoshi',
-                                fontSize: 18,
+                          Row(children: [
+                            Icon(
+                                currentSteps >= targetSteps
+                                    ? Icons.check_circle
+                                    : Icons.directions_walk,
                                 color: currentSteps >= targetSteps
                                     ? Colors.green
-                                    : AppColors.pureBlack,
-                                fontWeight: FontWeight.bold),
-                          ),
+                                    : AppColors.accentOrange,
+                                size: 28),
+                            const SizedBox(width: 12),
+                            Text('MANDATORY STEPS',
+                                style: AppTypography.interfaceLabel
+                                    .copyWith(fontWeight: FontWeight.bold))
+                          ]),
+                          Text('$currentSteps / $targetSteps',
+                              style: TextStyle(
+                                  fontFamily: 'Satoshi',
+                                  fontSize: 18,
+                                  color: currentSteps >= targetSteps
+                                      ? Colors.green
+                                      : AppColors.pureBlack,
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
                   ),
+
+                  // OPTIONAL SKIP BUTTON
+                  if (currentSteps < targetSteps) ...[
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () => setState(() => currentSteps = targetSteps),
+                      child: const Text("I can't walk right now (Skip)",
+                          style: TextStyle(
+                              fontFamily: 'Satoshi',
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                              decoration: TextDecoration.underline)),
+                    ),
+                  ],
                   const SizedBox(height: 32),
 
                   Container(
@@ -316,64 +343,59 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => isTypingMode = true),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: isTypingMode
-                                  ? NeumorphicStyles.convexDecoration(
-                                      radius: 24)
-                                  : const BoxDecoration(),
-                              child: Center(
-                                child: Text('Type',
-                                    style: AppTypography.interfaceLabel
-                                        .copyWith(
-                                            color: isTypingMode
-                                                ? AppColors.pureBlack
-                                                : AppColors.textMuted,
-                                            fontWeight: FontWeight.bold)),
-                              ),
-                            ),
-                          ),
-                        ),
+                            child: GestureDetector(
+                                onTap: () =>
+                                    setState(() => isTypingMode = true),
+                                child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    decoration: isTypingMode
+                                        ? NeumorphicStyles.convexDecoration(
+                                            radius: 24)
+                                        : const BoxDecoration(),
+                                    child: Center(
+                                        child: Text('Type',
+                                            style: AppTypography.interfaceLabel
+                                                .copyWith(
+                                                    color: isTypingMode
+                                                        ? AppColors.pureBlack
+                                                        : AppColors.textMuted,
+                                                    fontWeight:
+                                                        FontWeight.bold)))))),
                         Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => isTypingMode = false),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: !isTypingMode
-                                  ? NeumorphicStyles.convexDecoration(
-                                      radius: 24)
-                                  : const BoxDecoration(),
-                              child: Center(
-                                child: Text('Speak',
-                                    style: AppTypography.interfaceLabel
-                                        .copyWith(
-                                            color: !isTypingMode
-                                                ? AppColors.pureBlack
-                                                : AppColors.textMuted,
-                                            fontWeight: FontWeight.bold)),
-                              ),
-                            ),
-                          ),
-                        ),
+                            child: GestureDetector(
+                                onTap: () =>
+                                    setState(() => isTypingMode = false),
+                                child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    decoration: !isTypingMode
+                                        ? NeumorphicStyles.convexDecoration(
+                                            radius: 24)
+                                        : const BoxDecoration(),
+                                    child: Center(
+                                        child: Text('Speak',
+                                            style: AppTypography.interfaceLabel
+                                                .copyWith(
+                                                    color: !isTypingMode
+                                                        ? AppColors.pureBlack
+                                                        : AppColors.textMuted,
+                                                    fontWeight:
+                                                        FontWeight.bold)))))),
                       ],
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  // IndexedStack prevents the text field from losing memory
                   IndexedStack(
                     index: isTypingMode ? 0 : 1,
                     children: [
                       TypingMissionWidget(
-                        targetAffirmation: targetAffirmation,
-                        onMissionComplete: _completeMission,
-                      ),
+                          targetAffirmation: targetAffirmation,
+                          onMissionComplete: _completeMission),
                       VoiceMissionWidget(
-                        targetAffirmation: targetAffirmation,
-                        onMissionComplete: _completeMission,
-                      ),
+                          targetAffirmation: targetAffirmation,
+                          onMissionComplete: _completeMission),
                     ],
                   ),
                 ],

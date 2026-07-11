@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:alarm/alarm.dart'; // Import Alarm
+import 'package:alarm/alarm.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/neumorphic_styles.dart';
 import '../../alarm_clock/ui/alarm_home_screen.dart';
 import '../../manifestation/ui/affirmation_library_screen.dart';
-import '../../morning_mission/ui/active_mission_screen.dart'; // Import Mission Screen
+import '../../morning_mission/ui/active_mission_screen.dart';
 
 class MainNavigationRoot extends StatefulWidget {
   const MainNavigationRoot({super.key});
@@ -26,17 +26,47 @@ class _MainNavigationRootState extends State<MainNavigationRoot> {
   @override
   void initState() {
     super.initState();
+    _setupAlarmListener();
+    _checkIfAlreadyRinging(); // Catches missed alarm events if app was closed
+  }
 
-    // LISTEN FOR THE ALARM TRIGGER
+  // NEW: Brute force check on startup
+  Future<void> _checkIfAlreadyRinging() async {
+    // Give the engine 500ms to attach, then scan for actively ringing alarms
+    Future.delayed(const Duration(milliseconds: 500), () async {
+      if (!mounted) return;
+
+      // getAlarms() is asynchronous
+      final alarms = await Alarm.getAlarms();
+
+      for (var alarm in alarms) {
+        // isRinging() is asynchronous
+        if (await Alarm.isRinging(alarm.id)) {
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ActiveMissionScreen(alarmSettings: alarm),
+              ),
+            );
+          }
+          return; // Stop checking once we find a ringing alarm
+        }
+      }
+    });
+  }
+
+  void _setupAlarmListener() {
     ringSubscription ??= Alarm.ringStream.stream.listen((alarmSettings) {
-      // When the alarm rings, force navigate to the Active Mission Screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              ActiveMissionScreen(alarmSettings: alarmSettings),
-        ),
-      );
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                ActiveMissionScreen(alarmSettings: alarmSettings),
+          ),
+        );
+      }
     });
   }
 

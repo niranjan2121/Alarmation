@@ -1,12 +1,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <!-- REQUIRED PERMISSIONS FOR ALARMS -->
+    <!-- REQUIRED PERMISSIONS FOR ALARMS & BACKGROUND WAKING -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- REQUIRED PERMISSIONS FOR VOICE RECOGNITION -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.BLUETOOTH"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
 
     <application
         android:label="Alarmation"
@@ -31,7 +39,7 @@
             </intent-filter>
         </activity>
 
-        <!-- ALARM SERVICE RECEIVER -->
+        <!-- ALARM SERVICE RECEIVERS -->
         <receiver android:name="com.gdelataillade.alarm.alarm.AlarmReceiver" android:exported="true"/>
         <receiver android:name="com.gdelataillade.alarm.alarm.AlarmRebootReceiver" android:exported="true">
             <intent-filter>
@@ -43,5 +51,4 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    <!-- ... -->
 </manifest>
